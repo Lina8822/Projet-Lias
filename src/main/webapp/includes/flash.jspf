@@ -1,0 +1,2 @@
+<%@ page pageEncoding="UTF-8" %>
+<% for(String kind:List.of("erreur","succes")){Object flash=request.getAttribute(kind);if(flash==null)flash=session.getAttribute(kind);session.removeAttribute(kind);if(flash!=null){ %><div class="alert <%=kind.equals("erreur")?"error":""%>" role="<%=kind.equals("erreur")?"alert":"status"%>"><%=Page.e(flash)%></div><% }} %>

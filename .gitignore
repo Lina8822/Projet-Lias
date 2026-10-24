@@ -1,0 +1,20 @@
+build/
+dist/
+*.log
+.env
+/target/
+__pycache__/
+*.pyc
+/storage/
+/lias-files/
+
+# Local secrets, generated credentials, and archived original source
+.env.*
+!.env.example
+*.local.ps1
+**/test-accounts.properties
+*.pem
+*.key
+*.p12
+*.pfx
+/docs/source-original.zip

@@ -1,0 +1,2 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ include file="/includes/header.jspf" %><main id="main" class="content"><section class="card"><p class="eyebrow">LIAS</p><h1>Cette page n’est pas disponible.</h1><p>La ressource est introuvable, votre accès est restreint ou le service est temporairement indisponible.</p><p><a class="btn primary" href="<%=ctx%>/index.jsp">Accueil</a> <a class="btn" href="<%=ctx%>/login.jsp">Connexion</a></p></section></main></body></html>

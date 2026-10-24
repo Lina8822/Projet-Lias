@@ -1,0 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="com.lias.view.Page,com.lias.view.Page.*,com.lias.model.Membre,com.lias.model.Module.Field,com.lias.security.Access,com.lias.controller.PageServlet,java.util.*" %>
+<% Page p=(Page)request.getAttribute("page"); if(p==null)p=new Page("error","Service indisponible"); Membre user=(Membre)session.getAttribute("user"); String ctx=request.getContextPath(); %>
+<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><%=Page.e(p.title)%> · LIAS</title><link rel="icon" href="<%=ctx%>/assets/images/lias.svg"><link rel="stylesheet" href="<%=ctx%>/assets/css/main.css"><script src="<%=ctx%>/assets/js/main.js" defer></script></head><body><a class="skip" href="#main">Aller au contenu</a>

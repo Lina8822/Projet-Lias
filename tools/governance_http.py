@@ -1,0 +1,37 @@
+from history_support import *
+a=accounts();admin=login_as('admin');director=login_as('director');member=login_as('member');before=snapshot('audit_log')
+for page in ['membres','gouvernance']:
+ check(admin.req(page)[0]==200,'ADMIN GET '+page)
+check('Paramétrage du laboratoire' in admin.req('membres')[1],'formulaire technique ADMIN visible')
+check('Paramétrage du laboratoire' not in director.req('membres')[1],'formulaire technique absent pour directeur')
+check(director.req('gouvernance')[0]==200,'directeur garde accès gouvernance sans droit technique ADMIN')
+original=db("SELECT valeur FROM parametre WHERE cle='date_creation_laboratoire'")
+value='2001-02-03'
+for role,b in [('director',director),('member',member)]:
+ check(b.post('CompteServlet',dict(action='parametre',date_creation=value),expect=False)[0]==403,role+' paramétrage technique refusé côté serveur')
+check(db("SELECT valeur FROM parametre WHERE cle='date_creation_laboratoire'")==original,'refus conserve paramètre original')
+try:
+ admin.post('CompteServlet',dict(action='parametre',date_creation=value))
+ check(db("SELECT valeur FROM parametre WHERE cle='date_creation_laboratoire'")==value,'ADMIN date laboratoire persistée')
+ check(value in Browser().req('')[1],'date laboratoire visible sur accueil public')
+finally:
+ if original and original!='NULL':admin.post('CompteServlet',dict(action='parametre',date_creation=original))
+ else:subprocess.run(['C:/Program Files/Java/jdk-26.0.1/bin/java.exe','-cp','target/classes;src/main/webapp/WEB-INF/lib/*','tools/RestoreUnsetLabDate.java','--development-lias_data_base',value],check=True)
+check(db("SELECT valeur FROM parametre WHERE cle='date_creation_laboratoire'")== (original if original else 'NULL'),'date initiale rétablie sans suppression de ligne')
+uid=a['member.id'];dates=db('SELECT date_naissance,date_embauche FROM utilisateur WHERE id='+uid).split('\t')
+admin.post('CompteServlet',dict(action='permission',id=uid,publication_autorisee='0',date_naissance=dates[0],date_embauche=dates[1]))
+check(db('SELECT date_naissance,date_embauche FROM utilisateur WHERE id='+uid)=='\t'.join(dates),'ADMIN gère paramètres compte sans altérer dates')
+old=db("SELECT id_mandat FROM mandat WHERE id_membre="+a['vice.id']+" AND type_mandat='VICE_DIRECTEUR' AND statut='ACTIF' ORDER BY id_mandat DESC LIMIT 1")
+check(bool(old),'mandat vice de recette existant')
+stable=stable_mandate(old)
+admin.post('MandatServlet',dict(action='cloturer',id=old))
+closed=db('SELECT statut,date_fin FROM mandat WHERE id_mandat='+old)
+check(closed=='TERMINE\t'+db('SELECT CURRENT_DATE'),'ancien mandat vice clôturé et daté')
+new=nominate(admin,uid,'VICE_DIRECTEUR')
+check(new!=old and db('SELECT statut FROM mandat WHERE id_mandat='+new)=='ACTIF','nouveau vice mandat distinct actif')
+check(stable_mandate(old)==stable,'identité et début ancien mandat inchangés')
+check('VICE_DIRECTEUR' in member.req('dashboard')[1],'rôle effectif nouveau vice actualisé en session')
+nominate(admin,a['vice.id'],'VICE_DIRECTEUR')
+check(db('SELECT statut,date_fin FROM mandat WHERE id_mandat='+old)==closed,'ancien mandat reste intact après restauration')
+check(untouched(before,snapshot('audit_log')),'toutes les anciennes lignes audit inchangées')
+save_results('governance')

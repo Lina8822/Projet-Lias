@@ -1,0 +1,17 @@
+from recette_support import *
+a=accounts();users={role:login_as(role) for role in ['director','chef','member']};d=users['director'];tag='RECETTE-COLLAB-'+str(int(time.time()))
+d.post('AjouterEvenementServlet',dict(action='save',titre=tag,type_event='SEMINAIRE',date_event=time.strftime('%Y-%m-%d')+'T14:00',date_fin=time.strftime('%Y-%m-%d')+'T16:00',lieu='LIAS recette',description='Collaboration de trois profils'))
+eid=db('SELECT id_event FROM evenement WHERE titre='+literal(tag))
+d.post('AjouterEvenementServlet',dict(action='participant',id=eid,membre_id=a['chef.id'],responsabilite='ORGANISATEUR'))
+check(db('SELECT responsabilite FROM evenement_membre WHERE evenement_id='+eid+' AND membre_id='+a['chef.id'])=='ORGANISATEUR','chef organisateur du même événement')
+code,body,url=users['member'].upload('DocumentServlet',dict(titre=tag+' programme',type_doc='PROGRAMME',evenement_id=eid))
+check(code==200 and 'Opération enregistrée avec succès.' in body,'membre dépose programme de cet événement')
+doc=db('SELECT id_doc FROM document WHERE titre='+literal(tag+' programme'))
+check(db('SELECT evenement_id,id_deposeur FROM document WHERE id_doc='+doc)==eid+'\t'+a['member.id'],'document lié événement et déposant réel')
+for role,b in users.items():
+ code,body,url=b.req('evenements');check(code==200 and tag in body,role+' voit événement partagé')
+ code,body,url=b.req('documents');check(code==200 and tag+' programme' in body,role+' voit programme partagé')
+ with b.opener.open(BASE+'DownloadServlet?id='+doc) as response:check(response.status==200 and response.read().startswith(b'%PDF-'),role+' télécharge programme partagé')
+check(db("SELECT COUNT(*) FROM audit_log WHERE entite='evenement' AND entite_id="+eid+" AND action='CREATION'")=='1','création événement tracée')
+check(db("SELECT COUNT(*) FROM audit_log WHERE entite='document' AND entite_id="+doc+" AND action='DEPOT_DOCUMENT'")=='1','dépôt membre tracé')
+save_results('collaboration')

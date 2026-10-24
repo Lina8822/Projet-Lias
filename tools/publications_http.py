@@ -1,0 +1,12 @@
+from recette_support import *
+a=accounts();b=login_as('doctorant');member=login_as('member');tag='RECETTE-DOCTORANT-'+str(int(time.time()))
+values=dict(titre=tag,auteurs='Doctorant RECETTE',annee=time.strftime('%Y'),journal_conference='Revue recette',id_auteur=a['member.id'])
+b.post('AjouterPublicationServlet',values)
+ident=db('SELECT id_pub FROM publication WHERE titre='+literal(tag))
+check(db('SELECT id_auteur FROM publication WHERE id_pub='+ident)==a['doctorant.id'],'auteur propriétaire imposé au doctorant malgré id_auteur falsifié')
+check(member.post('AjouterPublicationServlet',dict(values,id=ident,titre=tag+' intrus'),expect=False)[0]==403,'membre ne modifie pas publication autre auteur')
+check(member.post('AjouterPublicationServlet',dict(action='archive',id=ident),expect=False)[0]==403,'membre ne supprime/archive pas publication autre auteur')
+check(db('SELECT titre FROM publication WHERE id_pub='+ident)==tag,'publication conservée sans modification tierce')
+b.post('AjouterPublicationServlet',dict(values,id=ident,titre=tag+' modifiée'))
+check(db('SELECT titre FROM publication WHERE id_pub='+ident)==tag+' modifiée','doctorant modifie sa publication')
+save_results('publications')

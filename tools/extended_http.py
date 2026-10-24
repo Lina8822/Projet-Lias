@@ -1,0 +1,21 @@
+from recette_support import *
+
+a=accounts();admin=login_as('admin');d=login_as('director');assoc=login_as('associe')
+uid=a['associe.id'];dates=db('SELECT date_naissance,date_embauche FROM utilisateur WHERE id='+uid).split('\t')
+def permission(value):
+ admin.post('CompteServlet',dict(action='permission',id=uid,publication_autorisee=value,date_naissance=dates[0],date_embauche=dates[1]))
+permission('1')
+audit=db("SELECT apres FROM audit_log WHERE action='PARAMETRES_COMPTE' AND entite_id="+uid+' ORDER BY id DESC LIMIT 1')
+check('publication_autorisee=1' in audit and 'date_naissance='+dates[0] in audit,'audit conserve les nouvelles valeurs des paramètres confidentiels')
+tag='RECETTE-ASSOCIE-'+str(time.time_ns())
+assoc.post('AjouterPublicationServlet',dict(titre=tag,auteurs='Associé test',annee=time.strftime('%Y'),journal_conference='Revue test'))
+check(db('SELECT id_auteur FROM publication WHERE titre='+literal(tag))==uid,'associé autorisé publie sous sa propre identité')
+permission('0')
+check(assoc.post('AjouterPublicationServlet',dict(titre=tag+' interdit'),expect=False)[0]==403,'révocation du droit publication appliquée à une session existante')
+eid=db("SELECT id_event FROM evenement WHERE statut<>'ARCHIVE' ORDER BY id_event DESC LIMIT 1")
+d.post('AjouterEvenementServlet',dict(action='participant',id=eid,membre_id=uid,responsabilite='ORGANISATEUR'))
+d.post('AjouterEvenementServlet',dict(action='participant',id=eid,membre_id=uid,responsabilite='PARTICIPANT'))
+audit=db("SELECT avant,apres FROM audit_log WHERE action='PARTICIPANT_AFFECTE' AND entite_id="+eid+' ORDER BY id DESC LIMIT 1')
+check('ORGANISATEUR' in audit.split('\t')[0] and 'PARTICIPANT' in audit.split('\t')[1],'changement organisateur vers participant historisé avec avant et après')
+check(assoc.req('evenements')[0]==200 and assoc.req('documents')[0]==403,'participation associé conserve les restrictions internes')
+save_results('extended')
